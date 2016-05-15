@@ -1,10 +1,17 @@
 #include "databasehandler.h"
 
+#include <QString>
+
+#include "common.h"
+
+
 using namespace std;
 
 dataBaseHandler::dataBaseHandler() :
     loginFlag(false)
 {
+    _db = QSqlDatabase::addDatabase(kkCommon::dbType);
+    _db.setDatabaseName(kkCommon::dbPath);
 }
 
 dataBaseHandler *dataBaseHandler::getInstance()
@@ -14,16 +21,13 @@ dataBaseHandler *dataBaseHandler::getInstance()
     return &_instance;
 }
 
-bool dataBaseHandler::loginWithPassword(string password)
+bool dataBaseHandler::loginWithPassword(QString &password)
 {
     if ((password.length() == 0) || (password.length() > 255))  {
         return false;
     }
 
-    bool retFlag = false;
+    loginFlag = _db.open(kkCommon::dbUser, password);
 
-    // decrypt db
-    //
-
-    return retFlag;
+    return loginFlag;
 }

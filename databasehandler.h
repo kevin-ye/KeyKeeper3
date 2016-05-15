@@ -1,19 +1,21 @@
 #ifndef DATABASEHANDLER_H
 #define DATABASEHANDLER_H
 
-#include <string>
+#include <QSqlDatabase>
+#include <QString>
 
 // singleton database handler class
 class dataBaseHandler
 {
     bool loginFlag;
+    QSqlDatabase _db;
 
     dataBaseHandler();
 
 public:
     static dataBaseHandler *getInstance();
 
-    bool loginWithPassword(std::string password);
+    bool loginWithPassword(QString &password);
 };
 
 #endif // DATABASEHANDLER_H

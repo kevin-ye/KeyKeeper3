@@ -9,6 +9,7 @@ loginDialog::loginDialog(QWidget *parent) :
     handlerInstance(dataBaseHandler::getInstance())
 {
     ui->setupUi(this);
+    //ui->cancelButton->setStyleSheet(QString("QPushButton {color: red; }"));
 }
 
 void loginDialog::exitApplication()
@@ -24,7 +25,7 @@ loginDialog::~loginDialog()
 void loginDialog::on_loginButton_clicked()
 {
     // login
-    string password = this->ui->passwordEdit->text().toStdString();
+    QString password = this->ui->passwordEdit->text();
 
     if (handlerInstance->loginWithPassword(password)) {
         // success
@@ -32,4 +33,9 @@ void loginDialog::on_loginButton_clicked()
         // error
         exitApplication();
     }
+}
+
+void loginDialog::on_cancelButton_clicked()
+{
+    exitApplication();
 }
