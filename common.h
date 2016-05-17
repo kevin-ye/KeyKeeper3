@@ -8,5 +8,4 @@
 namespace kkCommon {
     const QString dbType = "QSQLITE";
     const QString dbPath = "database/data.db";
-    const QString dbUser = "user";
 }

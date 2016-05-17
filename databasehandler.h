@@ -8,9 +8,14 @@
 class dataBaseHandler
 {
     bool loginFlag;
+    char *storedPassword;
     QSqlDatabase _db;
 
     dataBaseHandler();
+
+    void expirePassword();
+    void initRand();
+    int getRand();
 
 public:
     static dataBaseHandler *getInstance();
