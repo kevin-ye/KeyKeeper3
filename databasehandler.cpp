@@ -11,6 +11,14 @@
 #include <QFile>
 #include <cmath>
 #include <QDir>
+#include <QVariant>
+
+#include <cryptopp/aes.h>
+#include <cryptopp/modes.h>
+#include <cryptopp/filters.h>
+#include <cryptopp/hex.h>
+#include <cryptopp/sha.h>
+#include <cryptopp/md5.h>
 
 //#include <QDebug>
 //#include <QSqlError>
@@ -22,6 +30,7 @@
 #include "common.h"
 
 using namespace std;
+using namespace CryptoPP;
 
 dataBaseHandler::dataBaseHandler() :
     loginFlag(false),
@@ -42,7 +51,7 @@ void dataBaseHandler::expirePassword()
         return;
     }
 
-    for (int i = 0; i < strlen(storedPassword); ++i)
+    for (size_t i = 0; i < strlen(storedPassword); ++i)
     {
         char rc = getRand() % 128;
         // prevent compiler optimization
@@ -74,7 +83,7 @@ QString dataBaseHandler::generateSalt()
     return salt;
 }
 
-QString dataBaseHandler::hashPassword(QString &password, QString &salt)
+QString dataBaseHandler::hashPassword(const QString &password, const QString &salt)
 {
     QByteArray hashedValue = QCryptographicHash::hash((password + salt).toLocal8Bit(), QCryptographicHash::Sha3_512);
     QString hashedPassword = "";
@@ -87,6 +96,40 @@ QString dataBaseHandler::hashPassword(QString &password, QString &salt)
     //qDebug() << hashedPassword << endl;
 
     return hashedPassword;
+}
+
+QString dataBaseHandler::decrypt(const QString &cipher)
+{
+    string plain;
+    string encrypted = storedPassword;
+    // Hex decode symmetric key:
+    HexDecoder decoder;
+    decoder.Put((byte *)PRIVATE_KEY,32*2);
+    decoder.MessageEnd();
+    word64 size = decoder.MaxRetrievable();
+    char *decodedKey = new char[size];
+    decoder.Get((byte *)decodedKey, size);
+    // Generate Cipher, Key, and CBC
+    byte key[AES::MAX_KEYLENGTH], iv[AES::BLOCKSIZE];
+    StringSource(reinterpret_cast<const char *>(decodedKey), true,
+                 new HashFilter(*(new SHA256), new ArraySink(key, AES::MAX_KEYLENGTH)));
+    memset(iv, 0x00, AES::BLOCKSIZE);
+    try {
+        CBC_Mode<AES>::Decryption Decryptor(key, sizeof(key), iv);
+        StringSource(encrypted, true,
+                     new HexDecoder(new StreamTransformationFilter(Decryptor,
+                                                                   new StringSink(plain))));
+    }
+    catch (...) {
+        // ...
+    }
+
+    return QString::fromStdString(plain);
+}
+
+QString dataBaseHandler::encrypt(const QString &plainText)
+{
+
 }
 
 dataBaseHandler *dataBaseHandler::getInstance()
@@ -103,7 +146,7 @@ bool dataBaseHandler::needToCreateDatabase()
     return !(dbfile.exists() && dbfile.isFile());
 }
 
-bool dataBaseHandler::createNewDatabase(QString &password)
+bool dataBaseHandler::createNewDatabase(const QString &password)
 {
     if (!(needToCreateDatabase()) || (password.length() == 0) || (password.length() > 255))  {
         return false;
@@ -145,7 +188,7 @@ bool dataBaseHandler::createNewDatabase(QString &password)
     return loginFlag;
 }
 
-bool dataBaseHandler::loginWithPassword(QString &password)
+bool dataBaseHandler::loginWithPassword(const QString &password)
 {
     if ((password.length() == 0) || (password.length() > 255))  {
         return false;
@@ -184,4 +227,49 @@ bool dataBaseHandler::loginWithPassword(QString &password)
 bool dataBaseHandler::isReady()
 {
     return loginFlag;
+}
+
+void dataBaseHandler::getmodelData(vector<dataBaseHandler::modelData> &modify, const unsigned int index, const bool fetchAll)
+{
+    if (!isReady()) {
+        return;
+    }
+
+    modify.clear();
+    try {
+        if (fetchAll) {
+            QSqlQuery query;
+            query.clear();
+            query.prepare("select id, title, username, note from userData");
+            if (query.exec()) {
+                while (query.next()) {
+                    dataBaseHandler::modelData newRecord;
+                    newRecord.index = query.value(query.record().indexOf("id")).toInt();
+                    newRecord.title = query.value(query.record().indexOf("title")).toString();
+                    newRecord.username = query.value(query.record().indexOf("username")).toString();
+                    newRecord.note = query.value(query.record().indexOf("note")).toString();
+
+                    modify.push_back(newRecord);
+                }
+            }
+        } else {
+            QSqlQuery query;
+            query.clear();
+            query.prepare("select id, title, username, note from userData where id = :index");
+            query.bindValue(":index", index);
+            if (query.exec()) {
+                while (query.next()) {
+                    dataBaseHandler::modelData newRecord;
+                    newRecord.index = query.value(query.record().indexOf("id")).toInt();
+                    newRecord.title = query.value(query.record().indexOf("title")).toString();
+                    newRecord.username = query.value(query.record().indexOf("username")).toString();
+                    newRecord.note = query.value(query.record().indexOf("note")).toString();
+
+                    modify.push_back(newRecord);
+                }
+            }
+        }
+    } catch (...) {
+        // exception
+    }
 }
