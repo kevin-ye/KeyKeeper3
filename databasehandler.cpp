@@ -18,6 +18,7 @@
 #include <cryptopp/aes.h>
 #include <cryptopp/filters.h>
 #include <cryptopp/pwdbased.h>
+#include <cryptopp/base64.h>
 
 #include <QDebug>
 //#include <QSqlError>
@@ -60,12 +61,16 @@ void dataBaseHandler::passwordToKey(const QString &password)
 {
     expireKey();
     string pwd = password.toStdString();
-    unsigned int iterations = 15000;
-    storedKey = new SecByteBlock(16);
+    storedKey = new SecByteBlock(CryptoPP::AES::MAX_KEYLENGTH);
     char purpose = 0;
 
-    PKCS5_PBKDF2_HMAC<SHA256> kdf;
-    kdf.DeriveKey(storedKey->data(), storedKey->size(), purpose, (byte*)pwd.data(), pwd.length(), NULL, 0, iterations);
+    for (int i = 0; i < CryptoPP::AES::MAX_KEYLENGTH; ++i) {
+        if (i < pwd.length()) {
+            storedKey->data()[i] = (byte)(pwd[i]);
+        } else {
+            storedKey->data()[i] = 0x00;
+        }
+    }
 }
 
 void dataBaseHandler::initRand()
@@ -103,38 +108,43 @@ QString dataBaseHandler::hashPassword(const QString &password, const QString &sa
     return hashedPassword;
 }
 
-QString dataBaseHandler::decrypt(const QString &cipher)
+string dataBaseHandler::decrypt(const string &ciphertext)
 {
-    string plain = "";
-    string ciphertext = cipher.toStdString();
-    SecByteBlock iv(16);
-    memset(iv, 0x00, iv.size());
+    qDebug() << "decrypt" << CryptoPP::AES::BLOCKSIZE << ciphertext.size();
 
-    CryptoPP::AES::Decryption aesDecryption(storedKey->data(), storedKey->size());
-    CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption(aesDecryption, iv.data());
+    ECB_Mode< AES >::Decryption d;
+    d.SetKey(*storedKey, storedKey->size());
+    StreamTransformationFilter decryptor(d, NULL);
 
-    CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(plain));
-    stfDecryptor.Put( reinterpret_cast<const unsigned char*>(ciphertext.c_str()), ciphertext.length());
-    stfDecryptor.MessageEnd();
+    decryptor.Put((byte*)ciphertext.data(), ciphertext.size());
+    decryptor.MessageEnd();
 
-    return QString::fromStdString(plain);
+    size_t readysize = decryptor.MaxRetrievable();
+
+    string plain(readysize, 0x00);
+    decryptor.Get((byte*)plain.data(), plain.size());
+
+    return plain;
 }
 
-QString dataBaseHandler::encrypt(const QString &plainText)
+string dataBaseHandler::encrypt(const string &plain)
 {
-    string plain = plainText.toStdString();
-    string ciphertext = "";
-    SecByteBlock iv(16);
-    memset(iv, 0x00, iv.size());
 
-    CryptoPP::AES::Encryption aesEncryption(storedKey->data(), storedKey->size());
-    CryptoPP::CBC_Mode_ExternalCipher::Encryption cbcEncryption(aesEncryption, iv.data());
+    ECB_Mode< AES >::Encryption e;
+    e.SetKey(*storedKey, storedKey->size());
+    StreamTransformationFilter encryptor(e, NULL);
 
-    CryptoPP::StreamTransformationFilter stfEncryptor(cbcEncryption, new CryptoPP::StringSink(ciphertext));
-    stfEncryptor.Put( reinterpret_cast<const unsigned char*>(plain.c_str()), plain.length());
-    stfEncryptor.MessageEnd();
+    encryptor.Put((byte*)plain.data(), plain.size());
+    encryptor.MessageEnd();
 
-    return QString::fromStdString(ciphertext);
+    size_t readysize = encryptor.MaxRetrievable();
+
+    string ciphertext(readysize, 0x00);
+    encryptor.Get((byte*)ciphertext.data(), ciphertext.size());
+
+    qDebug() << "encrypt" << CryptoPP::AES::BLOCKSIZE << ciphertext.size();
+
+    return ciphertext;
 }
 
 dataBaseHandler *dataBaseHandler::getInstance()
@@ -225,7 +235,7 @@ bool dataBaseHandler::loginWithPassword(const QString &password)
         }
     }
 
-    qDebug() << decrypt(encrypt("test")) << endl;
+    qDebug() << QString::fromStdString(decrypt(encrypt("test"))) << endl;
 
     return loginFlag;
 }

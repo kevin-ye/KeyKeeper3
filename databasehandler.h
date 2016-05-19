@@ -4,6 +4,7 @@
 #include <QSqlDatabase>
 #include <QString>
 #include <vector>
+#include <string>
 
 #include <cryptopp/secblock.h>
 
@@ -22,8 +23,8 @@ class dataBaseHandler
     int getRand();
     QString generateSalt();
     QString hashPassword(const QString &password, const QString &salt);
-    QString decrypt(const QString &cipher);
-    QString encrypt(const QString &plainText);
+    std::string decrypt(const std::string &ciphertext);
+    std::string encrypt(const std::string &plain);
 
 public:
     ~dataBaseHandler();
