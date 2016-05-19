@@ -5,16 +5,19 @@
 #include <QString>
 #include <vector>
 
+#include <cryptopp/secblock.h>
+
 // singleton database handler class
 class dataBaseHandler
 {
     bool loginFlag;
-    char *storedPassword;
+    CryptoPP::SecByteBlock *storedKey;
     QSqlDatabase _db;
 
     dataBaseHandler();
 
-    void expirePassword();
+    void expireKey();
+    void passwordToKey(const QString &password);
     void initRand();
     int getRand();
     QString generateSalt();

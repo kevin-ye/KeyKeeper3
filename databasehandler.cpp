@@ -13,14 +13,13 @@
 #include <QDir>
 #include <QVariant>
 
-#include <cryptopp/aes.h>
-#include <cryptopp/modes.h>
-#include <cryptopp/filters.h>
-#include <cryptopp/hex.h>
+#include <cryptopp/eax.h>
 #include <cryptopp/sha.h>
-#include <cryptopp/md5.h>
+#include <cryptopp/aes.h>
+#include <cryptopp/filters.h>
+#include <cryptopp/pwdbased.h>
 
-//#include <QDebug>
+#include <QDebug>
 //#include <QSqlError>
 //#include <QApplication>
 
@@ -34,7 +33,7 @@ using namespace CryptoPP;
 
 dataBaseHandler::dataBaseHandler() :
     loginFlag(false),
-    storedPassword(nullptr)
+    storedKey(nullptr)
 {
     _db = QSqlDatabase::addDatabase(kkCommon::dbType);
     _db.setDatabaseName(kkCommon::dbPath);
@@ -42,23 +41,31 @@ dataBaseHandler::dataBaseHandler() :
 
 dataBaseHandler::~dataBaseHandler()
 {
-    expirePassword();
+    expireKey();
 }
 
-void dataBaseHandler::expirePassword()
+void dataBaseHandler::expireKey()
 {
-    if (storedPassword == nullptr) {
+    if (storedKey == nullptr) {
         return;
     }
 
-    for (size_t i = 0; i < strlen(storedPassword); ++i)
-    {
-        char rc = getRand() % 128;
-        // prevent compiler optimization
-        ((char volatile *)storedPassword)[i] = rc;
-    }
+    delete [] storedKey;
+    storedKey = nullptr;
 
-    delete [] storedPassword;
+    loginFlag = false;
+}
+
+void dataBaseHandler::passwordToKey(const QString &password)
+{
+    expireKey();
+    string pwd = password.toStdString();
+    unsigned int iterations = 15000;
+    storedKey = new SecByteBlock(16);
+    char purpose = 0;
+
+    PKCS5_PBKDF2_HMAC<SHA256> kdf;
+    kdf.DeriveKey(storedKey->data(), storedKey->size(), purpose, (byte*)pwd.data(), pwd.length(), NULL, 0, iterations);
 }
 
 void dataBaseHandler::initRand()
@@ -93,43 +100,41 @@ QString dataBaseHandler::hashPassword(const QString &password, const QString &sa
         hashedPassword += QString::fromStdString(std::to_string(abs((int)(hashedValue.at(i)))));
     }
 
-    //qDebug() << hashedPassword << endl;
-
     return hashedPassword;
 }
 
 QString dataBaseHandler::decrypt(const QString &cipher)
 {
-    string plain;
-    string encrypted = storedPassword;
-    // Hex decode symmetric key:
-    HexDecoder decoder;
-    decoder.Put((byte *)PRIVATE_KEY,32*2);
-    decoder.MessageEnd();
-    word64 size = decoder.MaxRetrievable();
-    char *decodedKey = new char[size];
-    decoder.Get((byte *)decodedKey, size);
-    // Generate Cipher, Key, and CBC
-    byte key[AES::MAX_KEYLENGTH], iv[AES::BLOCKSIZE];
-    StringSource(reinterpret_cast<const char *>(decodedKey), true,
-                 new HashFilter(*(new SHA256), new ArraySink(key, AES::MAX_KEYLENGTH)));
-    memset(iv, 0x00, AES::BLOCKSIZE);
-    try {
-        CBC_Mode<AES>::Decryption Decryptor(key, sizeof(key), iv);
-        StringSource(encrypted, true,
-                     new HexDecoder(new StreamTransformationFilter(Decryptor,
-                                                                   new StringSink(plain))));
-    }
-    catch (...) {
-        // ...
-    }
+    string plain = "";
+    string ciphertext = cipher.toStdString();
+    SecByteBlock iv(16);
+    memset(iv, 0x00, iv.size());
+
+    CryptoPP::AES::Decryption aesDecryption(storedKey->data(), storedKey->size());
+    CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDecryption(aesDecryption, iv.data());
+
+    CryptoPP::StreamTransformationFilter stfDecryptor(cbcDecryption, new CryptoPP::StringSink(plain));
+    stfDecryptor.Put( reinterpret_cast<const unsigned char*>(ciphertext.c_str()), ciphertext.length());
+    stfDecryptor.MessageEnd();
 
     return QString::fromStdString(plain);
 }
 
 QString dataBaseHandler::encrypt(const QString &plainText)
 {
+    string plain = plainText.toStdString();
+    string ciphertext = "";
+    SecByteBlock iv(16);
+    memset(iv, 0x00, iv.size());
 
+    CryptoPP::AES::Encryption aesEncryption(storedKey->data(), storedKey->size());
+    CryptoPP::CBC_Mode_ExternalCipher::Encryption cbcEncryption(aesEncryption, iv.data());
+
+    CryptoPP::StreamTransformationFilter stfEncryptor(cbcEncryption, new CryptoPP::StringSink(ciphertext));
+    stfEncryptor.Put( reinterpret_cast<const unsigned char*>(plain.c_str()), plain.length());
+    stfEncryptor.MessageEnd();
+
+    return QString::fromStdString(ciphertext);
 }
 
 dataBaseHandler *dataBaseHandler::getInstance()
@@ -148,7 +153,7 @@ bool dataBaseHandler::needToCreateDatabase()
 
 bool dataBaseHandler::createNewDatabase(const QString &password)
 {
-    if (!(needToCreateDatabase()) || (password.length() == 0) || (password.length() > 255))  {
+    if (!(needToCreateDatabase()) || (password.length() == 0) || (password.length() > 32))  {
         return false;
     }
 
@@ -198,9 +203,8 @@ bool dataBaseHandler::loginWithPassword(const QString &password)
     if (loginFlag) {
         try
         {
-            expirePassword();
-            storedPassword = new char[password.length() + 1];
-            strcpy(storedPassword, password.toStdString().c_str());
+            expireKey();
+            passwordToKey(password);
             // fetch user salt
             QSqlQuery query;
             query.clear();
@@ -216,10 +220,12 @@ bool dataBaseHandler::loginWithPassword(const QString &password)
             query.bindValue(":hashedvalue", hashedValue);
             loginFlag = loginFlag && query.exec() && (query.size() != 0);
         } catch (...) {
-            expirePassword();
+            expireKey();
             loginFlag = false;
         }
     }
+
+    qDebug() << decrypt(encrypt("test")) << endl;
 
     return loginFlag;
 }
