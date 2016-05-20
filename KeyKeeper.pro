@@ -14,15 +14,18 @@ TEMPLATE = app
 SOURCES += main.cpp\
         logindialog.cpp \
     databasehandler.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    addnewdialog.cpp
 
 HEADERS  += logindialog.h \
     databasehandler.h \
     mainwindow.h \
-    common.h
+    common.h \
+    addnewdialog.h
 
 FORMS    += logindialog.ui \
-    mainwindow.ui
+    mainwindow.ui \
+    addnewdialog.ui
 
 win32:CONFIG(release, debug|release): LIBS += -L$$PWD/cryptopp/release/ -lcryptopp
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/cryptopp/debug/ -lcryptopp

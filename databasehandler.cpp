@@ -110,8 +110,6 @@ QString dataBaseHandler::hashPassword(const QString &password, const QString &sa
 
 string dataBaseHandler::decrypt(const string &ciphertext)
 {
-    qDebug() << "decrypt" << CryptoPP::AES::BLOCKSIZE << ciphertext.size();
-
     ECB_Mode< AES >::Decryption d;
     d.SetKey(*storedKey, storedKey->size());
     StreamTransformationFilter decryptor(d, NULL);
@@ -129,7 +127,6 @@ string dataBaseHandler::decrypt(const string &ciphertext)
 
 string dataBaseHandler::encrypt(const string &plain)
 {
-
     ECB_Mode< AES >::Encryption e;
     e.SetKey(*storedKey, storedKey->size());
     StreamTransformationFilter encryptor(e, NULL);
@@ -141,8 +138,6 @@ string dataBaseHandler::encrypt(const string &plain)
 
     string ciphertext(readysize, 0x00);
     encryptor.Get((byte*)ciphertext.data(), ciphertext.size());
-
-    qDebug() << "encrypt" << CryptoPP::AES::BLOCKSIZE << ciphertext.size();
 
     return ciphertext;
 }
@@ -235,8 +230,6 @@ bool dataBaseHandler::loginWithPassword(const QString &password)
         }
     }
 
-    qDebug() << QString::fromStdString(decrypt(encrypt("test"))) << endl;
-
     return loginFlag;
 }
 
@@ -261,9 +254,10 @@ void dataBaseHandler::getmodelData(vector<dataBaseHandler::modelData> &modify, c
                 while (query.next()) {
                     dataBaseHandler::modelData newRecord;
                     newRecord.index = query.value(query.record().indexOf("id")).toInt();
-                    newRecord.title = query.value(query.record().indexOf("title")).toString();
-                    newRecord.username = query.value(query.record().indexOf("username")).toString();
-                    newRecord.note = query.value(query.record().indexOf("note")).toString();
+                    newRecord.title = decrypt(query.value(query.record().indexOf("title")).toString().toStdString());
+                    newRecord.username = decrypt(query.value(query.record().indexOf("username")).toString().toStdString());
+                    newRecord.password = decrypt(query.value(query.record().indexOf("password")).toString().toStdString());
+                    newRecord.note = decrypt(query.value(query.record().indexOf("note")).toString().toStdString());
 
                     modify.push_back(newRecord);
                 }
@@ -277,9 +271,10 @@ void dataBaseHandler::getmodelData(vector<dataBaseHandler::modelData> &modify, c
                 while (query.next()) {
                     dataBaseHandler::modelData newRecord;
                     newRecord.index = query.value(query.record().indexOf("id")).toInt();
-                    newRecord.title = query.value(query.record().indexOf("title")).toString();
-                    newRecord.username = query.value(query.record().indexOf("username")).toString();
-                    newRecord.note = query.value(query.record().indexOf("note")).toString();
+                    newRecord.title = decrypt(query.value(query.record().indexOf("title")).toString().toStdString());
+                    newRecord.username = decrypt(query.value(query.record().indexOf("username")).toString().toStdString());
+                    newRecord.password = decrypt(query.value(query.record().indexOf("password")).toString().toStdString());
+                    newRecord.note = decrypt(query.value(query.record().indexOf("note")).toString().toStdString());
 
                     modify.push_back(newRecord);
                 }

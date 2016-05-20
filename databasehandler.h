@@ -54,9 +54,10 @@ public:
     // modelData struct
     struct modelData {
         unsigned int index;
-        QString title;
-        QString username;
-        QString note;
+        std::string title;
+        std::string username;
+        std::string password;
+        std::string note;
     };
 
     /***

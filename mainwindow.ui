@@ -43,7 +43,17 @@
       <item>
        <widget class="QPushButton" name="addButton">
         <property name="text">
-         <string>Add new</string>
+         <string>Add</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="detailButton">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Detail</string>
         </property>
        </widget>
       </item>
@@ -60,16 +70,6 @@
         </property>
         <property name="text">
          <string>Remove</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="viewdetailButton">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="text">
-         <string>View detail</string>
         </property>
        </widget>
       </item>

@@ -39,11 +39,11 @@ void MainWindow::refreshTable()
     unsigned int i = 0;
     for (auto &item : tableData) {
         QModelIndex index = theModel->index(i, 0);
-        theModel->setData(index, item.title);
+        theModel->setData(index, QString::fromStdString(item.title));
         index = theModel->index(i, 1);
-        theModel->setData(index, item.username);
+        theModel->setData(index, QString::fromStdString(item.username));
         index = theModel->index(i, 2);
-        theModel->setData(index, item.note);
+        theModel->setData(index, QString::fromStdString(item.note));
 
         ++i;
     }
@@ -54,4 +54,12 @@ void MainWindow::refreshTable()
 void MainWindow::on_refreshButton_clicked()
 {
     refreshTable();
+}
+
+void MainWindow::on_addButton_clicked()
+{
+    // add new
+    // create new "add new" dialog
+    // show dialog
+    // refresh table
 }
