@@ -62,9 +62,7 @@ void dataBaseHandler::passwordToKey(const QString &password)
     expireKey();
     string pwd = password.toStdString();
     storedKey = new SecByteBlock(CryptoPP::AES::MAX_KEYLENGTH);
-    char purpose = 0;
-
-    for (int i = 0; i < CryptoPP::AES::MAX_KEYLENGTH; ++i) {
+    for (size_t i = 0; i < CryptoPP::AES::MAX_KEYLENGTH; ++i) {
         if (i < pwd.length()) {
             storedKey->data()[i] = (byte)(pwd[i]);
         } else {
@@ -204,30 +202,28 @@ bool dataBaseHandler::loginWithPassword(const QString &password)
         return false;
     }
 
-    loginFlag = _db.open();
-    if (loginFlag) {
-        try
-        {
-            expireKey();
-            passwordToKey(password);
-            // fetch user salt
-            QSqlQuery query;
-            query.clear();
-            query.prepare("select salt from validation");
-            loginFlag = loginFlag && query.exec() && (query.record().count() == 1);
-            query.first();
-            QString salt = query.value(query.record().indexOf("salt")).toString();
-            // hash with salt
-            QString hashedValue = hashPassword(password, salt);
-            // matching hash
-            query.clear();
-            query.prepare("select * from validation where hash = :hashedvalue");
-            query.bindValue(":hashedvalue", hashedValue);
-            loginFlag = loginFlag && query.exec() && (query.size() != 0);
-        } catch (...) {
-            expireKey();
-            loginFlag = false;
-        }
+    try
+    {
+        loginFlag = _db.open();
+        expireKey();
+        passwordToKey(password);
+        // fetch user salt
+        QSqlQuery query;
+        query.clear();
+        query.prepare("select salt from validation");
+        loginFlag = loginFlag && query.exec() && (query.first());
+        query.first();
+        QString salt = query.value(query.record().indexOf("salt")).toString();
+        // hash with salt
+        QString hashedValue = hashPassword(password, salt);
+        // matching hash
+        query.clear();
+        query.prepare("select * from validation where hash = :hashedvalue");
+        query.bindValue(":hashedvalue", hashedValue);
+        loginFlag = loginFlag && query.exec() && (query.first());
+    } catch (...) {
+        expireKey();
+        loginFlag = false;
     }
 
     return loginFlag;

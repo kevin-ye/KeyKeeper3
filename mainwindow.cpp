@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "addnewdialog.h"
 
 #include <QStandardItemModel>
 #include <QModelIndex>
@@ -60,6 +61,10 @@ void MainWindow::on_addButton_clicked()
 {
     // add new
     // create new "add new" dialog
+    addNewDialog *w = new addNewDialog();
     // show dialog
+    w->setAttribute(Qt::WA_DeleteOnClose);
+    w->show();
     // refresh table
+    refreshTable();
 }
