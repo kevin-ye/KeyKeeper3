@@ -27,8 +27,6 @@ private:
     dataBaseHandler *handlerInstance;
     dataBaseHandler::modelData holdingData;
     const bool isModifing;
-
-    void accepted();
 };
 
 #endif // ADDNEWDIALOG_H

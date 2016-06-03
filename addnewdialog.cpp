@@ -25,25 +25,24 @@ addNewDialog::~addNewDialog()
     delete ui;
 }
 
-void addNewDialog::accepted()
-{
-    qDebug() << "accept" << endl;
-}
-
 void addNewDialog::on_buttonBox_accepted()
 {
-    qDebug() << "save" << endl;
-    // save
+    holdingData.title = ui->titleEdit->text().toStdString();
+    holdingData.username = ui->usernameEdit->text().toStdString();
+    holdingData.password = ui->usernameEdit->text().toStdString();
+    holdingData.note = ui->noteEdit->toPlainText().toStdString();
     if (isModifing) {
         // save to index
+        handlerInstance->saveOnIndex(holdingData);
     } else {
         // insert new
+        handlerInstance->insertNew(holdingData);
     }
+    this->accept();
 }
 
 void addNewDialog::on_buttonBox_rejected()
 {
-    qDebug() << "cancel" << endl;
     // cancel
     this->reject();
 }

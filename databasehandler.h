@@ -25,6 +25,8 @@ class dataBaseHandler
     QString hashPassword(const QString &password, const QString &salt);
     std::string decrypt(const std::string &ciphertext);
     std::string encrypt(const std::string &plain);
+    std::string encodeToHex(const std::string input);
+    std::string decodeFromHex(const std::string input);
 
 public:
     ~dataBaseHandler();
@@ -64,6 +66,16 @@ public:
      * fetch userData by index
      ***/
      void getmodelData(std::vector<dataBaseHandler::modelData> &modify, const unsigned int index = 0, const bool fetchAll = true);
+
+     /***
+      * save on index
+      ***/
+     void saveOnIndex(const dataBaseHandler::modelData &data);
+
+     /***
+      * insert new
+      ***/
+     void insertNew(const dataBaseHandler::modelData &data);
 };
 
 #endif // DATABASEHANDLER_H

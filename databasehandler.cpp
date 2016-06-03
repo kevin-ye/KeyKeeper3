@@ -19,9 +19,10 @@
 #include <cryptopp/filters.h>
 #include <cryptopp/pwdbased.h>
 #include <cryptopp/base64.h>
+#include <cryptopp/hex.h>
 
 #include <QDebug>
-//#include <QSqlError>
+#include <QSqlError>
 //#include <QApplication>
 
 #include <ctime>
@@ -108,11 +109,12 @@ QString dataBaseHandler::hashPassword(const QString &password, const QString &sa
 
 string dataBaseHandler::decrypt(const string &ciphertext)
 {
+    string cipher = decodeFromHex(ciphertext);
     ECB_Mode< AES >::Decryption d;
     d.SetKey(*storedKey, storedKey->size());
     StreamTransformationFilter decryptor(d, NULL);
 
-    decryptor.Put((byte*)ciphertext.data(), ciphertext.size());
+    decryptor.Put((byte*)cipher.data(), cipher.size());
     decryptor.MessageEnd();
 
     size_t readysize = decryptor.MaxRetrievable();
@@ -137,7 +139,44 @@ string dataBaseHandler::encrypt(const string &plain)
     string ciphertext(readysize, 0x00);
     encryptor.Get((byte*)ciphertext.data(), ciphertext.size());
 
-    return ciphertext;
+    return encodeToHex(ciphertext);
+}
+
+string dataBaseHandler::encodeToHex(const std::string input)
+{
+    string encoded;
+
+    HexEncoder encoder;
+    encoder.Put((byte*)input.data(), input.size());
+    encoder.MessageEnd();
+
+    word64 size = encoder.MaxRetrievable();
+    if(size)
+    {
+        encoded.resize(size);
+        encoder.Get((byte*)encoded.data(), encoded.size());
+    }
+
+    return encoded;
+}
+
+string dataBaseHandler::decodeFromHex(const std::string input)
+{
+    string decoded;
+
+    HexDecoder decoder;
+
+    decoder.Put((byte*)input.data(), input.size());
+    decoder.MessageEnd();
+
+    word64 size = decoder.MaxRetrievable();
+    if(size && size <= SIZE_MAX)
+    {
+        decoded.resize(size);
+        decoder.Get((byte*)decoded.data(), decoded.size());
+    }
+
+    return decoded;
 }
 
 dataBaseHandler *dataBaseHandler::getInstance()
@@ -275,6 +314,50 @@ void dataBaseHandler::getmodelData(vector<dataBaseHandler::modelData> &modify, c
                     modify.push_back(newRecord);
                 }
             }
+        }
+    } catch (...) {
+        // exception
+    }
+}
+
+void dataBaseHandler::saveOnIndex(const dataBaseHandler::modelData &data)
+{
+    if (!isReady()) {
+        return;
+    }
+    QSqlQuery query;
+    try {
+        query.clear();
+        query.prepare("update userData set title=:title, username=:username, password=:password note=:note where id=:id");
+        query.bindValue(":title", QString::fromStdString(encrypt(data.title)));
+        query.bindValue(":username", QString::fromStdString(encrypt(data.username)));
+        query.bindValue(":password", QString::fromStdString(encrypt(data.password)));
+        query.bindValue(":note", QString::fromStdString(encrypt(data.note)));
+        query.bindValue(":id", data.index);
+        if (!query.exec()) {
+            qDebug() << query.lastError();
+        }
+    } catch (...) {
+        // exception
+
+    }
+}
+
+void dataBaseHandler::insertNew(const dataBaseHandler::modelData &data)
+{
+    if (!isReady()) {
+        return;
+    }
+    QSqlQuery query;
+    try {
+        query.clear();
+        query.prepare("insert into userData (title, username, password, note) values (:title,:username,:password,:note)");
+        query.bindValue(":title", QString::fromStdString(encrypt(data.title)));
+        query.bindValue(":username", QString::fromStdString(encrypt(data.username)));
+        query.bindValue(":password", QString::fromStdString(encrypt(data.password)));
+        query.bindValue(":note", QString::fromStdString(encrypt(data.note)));
+        if (!query.exec()) {
+            qDebug() << query.lastError();
         }
     } catch (...) {
         // exception
