@@ -13,11 +13,13 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
     handlerInstance(dataBaseHandler::getInstance()),
-    theModel(nullptr)
+    theModel(nullptr),
+    tableData(vector<dataBaseHandler::modelData>())
 {
     ui->setupUi(this);
     ui->removeButton->setStyleSheet(QString("QPushButton {color: red; }"));
-
+    ui->tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    ui->tableView->setSelectionMode(QAbstractItemView::SingleSelection);
     refreshTable();
 }
 
@@ -28,8 +30,11 @@ MainWindow::~MainWindow()
 
 void MainWindow::refreshTable()
 {
-    vector<dataBaseHandler::modelData> tableData;
     tableData.clear();
+    if (theModel != nullptr) {
+        theModel->clear();
+        delete theModel;
+    }
 
     handlerInstance->getmodelData(tableData);
     theModel = new QStandardItemModel(tableData.size(), 3, this);
@@ -61,10 +66,34 @@ void MainWindow::on_addButton_clicked()
 {
     // add new
     // create new "add new" dialog
-    addNewDialog *w = new addNewDialog();
+    addNewDialog *w = new addNewDialog(this);
     // show dialog
     w->setAttribute(Qt::WA_DeleteOnClose);
-    w->show();
+    w->exec();
     // refresh table
     refreshTable();
+}
+
+void MainWindow::on_tableView_doubleClicked(const QModelIndex &index)
+{
+    on_detailButton_clicked();
+}
+
+void MainWindow::on_detailButton_clicked()
+{
+    // edit
+    dataBaseHandler::modelData data;
+    data = tableData[ui->tableView->selectionModel()->selection().indexes().at(0).row()];
+    // create new "add new" dialog
+    addNewDialog *w = new addNewDialog(this, true, data);
+    // show dialog
+    w->setAttribute(Qt::WA_DeleteOnClose);
+    w->exec();
+    // refresh table
+    refreshTable();
+}
+
+void MainWindow::on_tableView_clicked(const QModelIndex &index)
+{
+    ui->detailButton->setEnabled(ui->tableView->selectionModel()->selection().indexes().count() != 0);
 }

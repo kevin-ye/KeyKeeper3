@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QStandardItemModel>
+#include <vector>
 
 #include "databasehandler.h"
 
@@ -23,10 +24,17 @@ private slots:
 
     void on_addButton_clicked();
 
+    void on_tableView_doubleClicked(const QModelIndex &index);
+
+    void on_detailButton_clicked();
+
+    void on_tableView_clicked(const QModelIndex &index);
+
 private:
     Ui::MainWindow *ui;
     dataBaseHandler *handlerInstance;
     QStandardItemModel *theModel;
+    std::vector<dataBaseHandler::modelData> tableData;
     void refreshTable();
 };
 

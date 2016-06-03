@@ -284,7 +284,7 @@ void dataBaseHandler::getmodelData(vector<dataBaseHandler::modelData> &modify, c
         if (fetchAll) {
             QSqlQuery query;
             query.clear();
-            query.prepare("select id, title, username, note from userData");
+            query.prepare("select * from userData");
             if (query.exec()) {
                 while (query.next()) {
                     dataBaseHandler::modelData newRecord;
@@ -300,7 +300,7 @@ void dataBaseHandler::getmodelData(vector<dataBaseHandler::modelData> &modify, c
         } else {
             QSqlQuery query;
             query.clear();
-            query.prepare("select id, title, username, note from userData where id = :index");
+            query.prepare("select * from userData where id = :index");
             query.bindValue(":index", index);
             if (query.exec()) {
                 while (query.next()) {
@@ -328,7 +328,7 @@ void dataBaseHandler::saveOnIndex(const dataBaseHandler::modelData &data)
     QSqlQuery query;
     try {
         query.clear();
-        query.prepare("update userData set title=:title, username=:username, password=:password note=:note where id=:id");
+        query.prepare("update userData set title=:title, username=:username, password=:password, note=:note where id=:id");
         query.bindValue(":title", QString::fromStdString(encrypt(data.title)));
         query.bindValue(":username", QString::fromStdString(encrypt(data.username)));
         query.bindValue(":password", QString::fromStdString(encrypt(data.password)));

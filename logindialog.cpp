@@ -46,7 +46,7 @@ void loginDialog::on_loginButton_clicked()
             // success
             if (handlerInstance->isReady()) {
                 MainWindow *theMainWindow = new MainWindow();
-                theMainWindow->setAttribute(Qt::WA_DeleteOnClose);
+                //theMainWindow->setAttribute(Qt::WA_DeleteOnClose);
                 this->hide();
                 theMainWindow->show();
             }
